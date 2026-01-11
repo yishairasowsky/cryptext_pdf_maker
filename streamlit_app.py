@@ -5,8 +5,8 @@ from pypdf import PdfReader, PdfWriter
 
 st.set_page_config(page_title="Cryptext PDF Builder", layout="centered")
 
-st.title("🔐 Cryptext PDF Builder")
-st.write("Enter a word and receive a generated PDF from the Cryptext CDN.")
+st.title("🔢➡️🔠 Cryptext PDF Builder")
+st.write("Enter word(s) and receive a generated Cryptext PDF.")
 
 # ===============================
 # Your Cryptext CDN
@@ -53,7 +53,7 @@ TOKEN_MAP = {
 # ===============================
 # UI
 # ===============================
-force_word = st.text_input("Enter your word", value="your.word.goes.here")
+force_word = st.text_input("Enter your word(s)", value="several.example.words")
 
 if st.button("Generate PDF"):
     if not force_word.strip():
