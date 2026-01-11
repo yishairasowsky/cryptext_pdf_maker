@@ -53,7 +53,7 @@ TOKEN_MAP = {
 # ===============================
 # UI
 # ===============================
-force_word = st.text_input("Enter your word", value="duman.friedman")
+force_word = st.text_input("Enter your word", value="your.word.goes.here")
 
 if st.button("Generate PDF"):
     if not force_word.strip():
