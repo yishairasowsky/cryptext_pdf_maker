@@ -1,7 +1,6 @@
 import streamlit as st
 import requests
 import io
-import tempfile
 from pypdf import PdfReader, PdfWriter
 
 st.set_page_config(
@@ -107,17 +106,9 @@ if st.button("Generate PDF"):
         writer.write(pdf_bytes)
         pdf_bytes.seek(0)
 
-        # Write to temp file for reliable preview
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(pdf_bytes.getvalue())
-            tmp_path = tmp.name
-
+        # ✅ Native Streamlit PDF preview (this is the fix)
         st.markdown("### Preview")
-        st.components.v1.iframe(
-            src=tmp_path,
-            width=700,
-            height=900
-        )
+        st.pdf(pdf_bytes)
 
         st.download_button(
             label="Download PDF",
