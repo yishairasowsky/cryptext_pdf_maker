@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import io
-import tempfile
+import base64
 from pypdf import PdfReader, PdfWriter
 
 st.set_page_config(
@@ -60,51 +60,58 @@ force_word = st.text_input(
 )
 
 if st.button("Generate PDF"):
-    if not force_word.strip():
-        st.stop()
+    text = force_word.lower()
+    tokens = []
 
-    with st.spinner("Building PDF..."):
-        text = force_word.lower()
-        tokens = []
+    for i, ch in enumerate(text):
+        if ch == ".":
+            tokens.append("dot")
+            continue
 
-        for i, ch in enumerate(text):
-            if ch == ".":
-                tokens.append("dot")
-                continue
+        is_word_start = (i == 0) or (text[i - 1] == ".")
 
-            is_word_start = (i == 0) or (text[i - 1] == ".")
+        if ch == "e" and is_word_start:
+            tokens.append("e3")
+        elif ch == "r" and is_word_start:
+            tokens.append("r21")
+        else:
+            tokens.append(ch)
 
-            if ch == "e" and is_word_start:
-                tokens.append("e3")
-            elif ch == "r" and is_word_start:
-                tokens.append("r21")
-            else:
-                tokens.append(ch)
+    writer = PdfWriter()
 
-        writer = PdfWriter()
+    for token in reversed(tokens):
+        key = TOKEN_MAP.get(token, token)
+        file_id = FILE_IDS[key]
 
-        for token in reversed(tokens):
-            key = TOKEN_MAP.get(token, token)
-            file_id = FILE_IDS[key]
+        url = f"https://drive.google.com/uc?export=download&id={file_id}"
+        data = requests.get(url).content
 
-            url = f"https://drive.google.com/uc?export=download&id={file_id}"
-            data = requests.get(url).content
+        reader = PdfReader(io.BytesIO(data))
+        writer.add_page(reader.pages[0])
 
-            reader = PdfReader(io.BytesIO(data))
-            writer.add_page(reader.pages[0])
+    pdf_bytes = io.BytesIO()
+    writer.write(pdf_bytes)
+    pdf_bytes.seek(0)
 
-        # ✅ write to real temp file (required by st.pdf on Cloud)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            writer.write(tmp)
-            pdf_path = tmp.name
+    # ✅ universal preview via HTML object tag
+    pdf_b64 = base64.b64encode(pdf_bytes.getvalue()).decode()
 
-        st.markdown("### Preview")
-        st.pdf(pdf_path)
+    st.markdown("### Preview")
+    st.components.v1.html(
+        f"""
+        <object
+            data="data:application/pdf;base64,{pdf_b64}"
+            type="application/pdf"
+            width="100%"
+            height="900px">
+        </object>
+        """,
+        height=900,
+    )
 
-        with open(pdf_path, "rb") as f:
-            st.download_button(
-                "Download PDF",
-                f.read(),
-                file_name=f"combined_{''.join(tokens)}.pdf",
-                mime="application/pdf",
-            )
+    st.download_button(
+        "Download PDF",
+        pdf_bytes.getvalue(),
+        file_name=f"combined_{''.join(tokens)}.pdf",
+        mime="application/pdf",
+    )
