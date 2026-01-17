@@ -1,15 +1,19 @@
 import streamlit as st
 import requests
 import io
+import base64
 from pypdf import PdfReader, PdfWriter
 
-st.set_page_config(page_title="Cryptext PDF Builder", layout="centered")
+st.set_page_config(
+    page_title="Cryptext PDF Builder",
+    layout="centered"
+)
 
-st.title("🔢➡️🔠 Cryptext PDF Builder")
+st.title("Cryptext PDF Builder")
 st.write("Enter word(s) and receive a generated Cryptext PDF.")
 
 # ===============================
-# Your Cryptext CDN
+# Cryptext CDN
 # ===============================
 FILE_IDS = {
     "m": "1UbRh_26i0BsjxOhIDg0wMbru_QL6yVL5",
@@ -53,24 +57,39 @@ TOKEN_MAP = {
 # ===============================
 # UI
 # ===============================
-force_word = st.text_input("Enter your word(s)", value="several.example.words")
+force_word = st.text_input(
+    "Enter your word(s)",
+    value="several.example.words"
+)
 
 if st.button("Generate PDF"):
     if not force_word.strip():
         st.error("Please enter a word.")
         st.stop()
 
-    with st.spinner("Fetching fragments and building PDF…"):
+    with st.spinner("Fetching fragments and building PDF..."):
+        text = force_word.lower()
         tokens = []
-        for ch in force_word.lower():
+
+        # --- Context-aware tokenization ---
+        for i, ch in enumerate(text):
             if ch == ".":
                 tokens.append("dot")
+                continue
+
+            is_word_start = (i == 0) or (text[i - 1] == ".")
+
+            if ch == "e" and is_word_start:
+                tokens.append("e3")
+            elif ch == "r" and is_word_start:
+                tokens.append("r21")
             else:
                 tokens.append(ch)
 
         writer = PdfWriter()
 
         try:
+            # Build PDF (reverse order preserved from your original logic)
             for token in reversed(tokens):
                 key = TOKEN_MAP.get(token, token)
                 file_id = FILE_IDS.get(key)
@@ -80,22 +99,33 @@ if st.button("Generate PDF"):
                     st.stop()
 
                 url = f"https://drive.google.com/uc?export=download&id={file_id}"
-                data = requests.get(url).content
+                response = requests.get(url)
+                response.raise_for_status()
 
-                reader = PdfReader(io.BytesIO(data))
+                reader = PdfReader(io.BytesIO(response.content))
                 writer.add_page(reader.pages[0])
 
-            output_name = f"combined_{''.join(tokens)}.pdf"
             pdf_bytes = io.BytesIO()
             writer.write(pdf_bytes)
             pdf_bytes.seek(0)
 
-            st.success("PDF generated!")
+            # --- Immediate preview ---
+            pdf_base64 = base64.b64encode(pdf_bytes.getvalue()).decode("utf-8")
+
+            st.markdown("### Preview")
+            st.components.v1.iframe(
+                src=f"data:application/pdf;base64,{pdf_base64}",
+                width=700,
+                height=900,
+            )
+
+            # --- Download ---
+            output_name = f"combined_{''.join(tokens)}.pdf"
             st.download_button(
                 label="Download PDF",
                 data=pdf_bytes,
                 file_name=output_name,
-                mime="application/pdf"
+                mime="application/pdf",
             )
 
         except Exception as e:
