@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import io
-import base64
+import tempfile
 from pypdf import PdfReader, PdfWriter
 
 st.set_page_config(
@@ -67,11 +67,11 @@ if st.button("Generate PDF"):
         st.error("Please enter a word.")
         st.stop()
 
-    with st.spinner("Fetching fragments and building PDF..."):
+    with st.spinner("Building PDF..."):
         text = force_word.lower()
         tokens = []
 
-        # --- Context-aware tokenization ---
+        # Context-aware tokenization
         for i, ch in enumerate(text):
             if ch == ".":
                 tokens.append("dot")
@@ -88,45 +88,40 @@ if st.button("Generate PDF"):
 
         writer = PdfWriter()
 
-        try:
-            # Build PDF (reverse order preserved from your original logic)
-            for token in reversed(tokens):
-                key = TOKEN_MAP.get(token, token)
-                file_id = FILE_IDS.get(key)
+        for token in reversed(tokens):
+            key = TOKEN_MAP.get(token, token)
+            file_id = FILE_IDS.get(key)
 
-                if not file_id:
-                    st.error(f"No file mapped for token: {token}")
-                    st.stop()
+            if not file_id:
+                st.error(f"No file mapped for token: {token}")
+                st.stop()
 
-                url = f"https://drive.google.com/uc?export=download&id={file_id}"
-                response = requests.get(url)
-                response.raise_for_status()
+            url = f"https://drive.google.com/uc?export=download&id={file_id}"
+            response = requests.get(url)
+            response.raise_for_status()
 
-                reader = PdfReader(io.BytesIO(response.content))
-                writer.add_page(reader.pages[0])
+            reader = PdfReader(io.BytesIO(response.content))
+            writer.add_page(reader.pages[0])
 
-            pdf_bytes = io.BytesIO()
-            writer.write(pdf_bytes)
-            pdf_bytes.seek(0)
+        pdf_bytes = io.BytesIO()
+        writer.write(pdf_bytes)
+        pdf_bytes.seek(0)
 
-            # --- Immediate preview ---
-            pdf_base64 = base64.b64encode(pdf_bytes.getvalue()).decode("utf-8")
+        # Write to temp file for reliable preview
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(pdf_bytes.getvalue())
+            tmp_path = tmp.name
 
-            st.markdown("### Preview")
-            st.components.v1.iframe(
-                src=f"data:application/pdf;base64,{pdf_base64}",
-                width=700,
-                height=900,
-            )
+        st.markdown("### Preview")
+        st.components.v1.iframe(
+            src=tmp_path,
+            width=700,
+            height=900
+        )
 
-            # --- Download ---
-            output_name = f"combined_{''.join(tokens)}.pdf"
-            st.download_button(
-                label="Download PDF",
-                data=pdf_bytes,
-                file_name=output_name,
-                mime="application/pdf",
-            )
-
-        except Exception as e:
-            st.error(f"Error: {e}")
+        st.download_button(
+            label="Download PDF",
+            data=pdf_bytes,
+            file_name=f"combined_{''.join(tokens)}.pdf",
+            mime="application/pdf"
+        )
