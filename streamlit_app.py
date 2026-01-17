@@ -1,20 +1,13 @@
 import streamlit as st
 import requests
 import io
-import base64
 from pypdf import PdfReader, PdfWriter
 
-st.set_page_config(
-    page_title="Cryptext PDF Builder",
-    layout="centered"
-)
+st.set_page_config(page_title="Cryptext PDF Builder", layout="centered")
 
 st.title("Cryptext PDF Builder")
 st.write("Enter word(s) and receive a generated Cryptext PDF.")
 
-# ===============================
-# Cryptext CDN
-# ===============================
 FILE_IDS = {
     "m": "1UbRh_26i0BsjxOhIDg0wMbru_QL6yVL5",
     "y": "12mUIM66tN5U4ymH8-yK-OS-CbA18fCoi",
@@ -23,41 +16,19 @@ FILE_IDS = {
     "z": "17_aJEGRHeNtjqE-l5rQfWBKBGqk8ethJ",
     "e2": "1KzJsHLWarZAPQId0rdh_5aayVmgDFXPL",
     "e3": "1wbwObcpRZDRdG8qX1ECvol0NCiTkwkq5",
-    "h": "1TjFYmuFr8nx5peV5da1i_pMMxl_aKNFW",
-    "v": "1UmpSNzkXWQBlSEOdNfR4G0f_GLXnNSM4",
-    "x": "1VWEQIOcnWk7DxkITjD--swvAQkjVcy6J",
-    "w": "1oiKE0mWM6QtE3d26SzOFDpop7Yue6iNJ",
-    "g": "1tmvojND3Uu9lR-RtWkej1DE1p2YtJRKE",
-    "f": "1u7oTKGqkjSpU85rgNNU4N34ia6b7QJuQ",
-    "d": "1xjBZpSTokFPzycjO-NTOQ3jya9BubIi1",
-    "q": "11O59O28n-IfDzAzMRefTctJhQv0Q-FAZ",
-    "l7": "11XT-03Am8OaGYBU4EbAc8dUi9jW2R16U",
-    "s": "1ApxQ_Z4MKfQ6nkJKVHV6hop6CQLDuzLf",
-    "j": "1CwsMsVq-QhLzVOBhHtAX2ubhL4NsmdeS",
-    "l1": "1D_uS7hoPNOvGzkFLd1iopptCBzAVfYr9",
     "r1": "1LCdjcGNnC80WCADNJ-dBZPJzRNJzV18K",
     "r21": "1ojXyOgfGGzE2RrKxu1jJbzG-X7CY6AGH",
-    "b": "1P_8oZ5AipkJ-nnGgn1wCal9EXvtLukTx",
-    "u": "1X2xG7idLYDjEGddhgB6XpzfGTZqyCcOw",
-    "n": "1X6izojDmqdBGNOQP10vJqryXACwuqisH",
-    "i": "1ZVW9tLujdKUsST-Z4bY14lQGXEZ00Mag",
-    "o": "1b0w2Yw6rZsoDvPbVv92kiUIVdPDnKYTh",
-    "p": "1bRFJWuJaUAXCuFTZrv-oX3pFJYfIWk1l",
+    "l7": "11XT-03Am8OaGYBU4EbAc8dUi9jW2R16U",
     "a": "1gHkEiKRz5vF7jH2douD4RxJ1jxyHpOsP",
-    "t": "1p4dU0y3ymbkPxXuSAVkjGAp7J_vugw_k",
-    "k": "1tPgM_KI6k1OVQ65neDhoM-o_eEHgpEQL",
+    "b": "1P_8oZ5AipkJ-nnGgn1wCal9EXvtLukTx",
+    "d": "1xjBZpSTokFPzycjO-NTOQ3jya9BubIi1",
+    "e": "1KzJsHLWarZAPQId0rdh_5aayVmgDFXPL",
+    "o": "1b0w2Yw6rZsoDvPbVv92kiUIVdPDnKYTh",
 }
 
-TOKEN_MAP = {
-    "e": "e2",
-    "l": "l7",
-    "r": "r1",
-}
+TOKEN_MAP = {"e": "e2", "l": "l7", "r": "r1"}
 
-force_word = st.text_input(
-    "Enter your word(s)",
-    value="Red.Ear"
-)
+force_word = st.text_input("Enter your word(s)", value="Red.Ear")
 
 if st.button("Generate PDF"):
     text = force_word.lower()
@@ -68,7 +39,7 @@ if st.button("Generate PDF"):
             tokens.append("dot")
             continue
 
-        is_word_start = (i == 0) or (text[i - 1] == ".")
+        is_word_start = i == 0 or text[i - 1] == "."
 
         if ch == "e" and is_word_start:
             tokens.append("e3")
@@ -81,10 +52,11 @@ if st.button("Generate PDF"):
 
     for token in reversed(tokens):
         key = TOKEN_MAP.get(token, token)
-        file_id = FILE_IDS[key]
+        file_id = FILE_IDS.get(key)
 
-        url = f"https://drive.google.com/uc?export=download&id={file_id}"
-        data = requests.get(url).content
+        data = requests.get(
+            f"https://drive.google.com/uc?export=download&id={file_id}"
+        ).content
 
         reader = PdfReader(io.BytesIO(data))
         writer.add_page(reader.pages[0])
@@ -92,22 +64,6 @@ if st.button("Generate PDF"):
     pdf_bytes = io.BytesIO()
     writer.write(pdf_bytes)
     pdf_bytes.seek(0)
-
-    # ✅ universal preview via HTML object tag
-    pdf_b64 = base64.b64encode(pdf_bytes.getvalue()).decode()
-
-    st.markdown("### Preview")
-    st.components.v1.html(
-        f"""
-        <object
-            data="data:application/pdf;base64,{pdf_b64}"
-            type="application/pdf"
-            width="100%"
-            height="900px">
-        </object>
-        """,
-        height=900,
-    )
 
     st.download_button(
         "Download PDF",
