@@ -108,7 +108,7 @@ if st.button("Generate PDF"):
 
         # ✅ Native Streamlit PDF preview (this is the fix)
         st.markdown("### Preview")
-        st.pdf(pdf_bytes)
+        st.pdf(pdf_bytes.getvalue())
 
         st.download_button(
             label="Download PDF",
