@@ -7,12 +7,12 @@ from pypdf import PdfReader, PdfWriter
 # Page config
 # --------------------
 st.set_page_config(
-    page_title="Cryptext PDF Builder",
+    page_title="Cryptext PDF",
     layout="centered",
 )
 
 # --------------------
-# Simple UI styling
+# Styling
 # --------------------
 st.markdown(
     """
@@ -21,15 +21,22 @@ st.markdown(
             font-size: 3rem;
             margin-bottom: 0.5rem;
         }
-        .main p {
-            font-size: 1.2rem;
+        .instruction {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+        .example {
+            font-size: 1.1rem;
+            opacity: 0.7;
+            margin-bottom: 2rem;
         }
         input {
-            font-size: 1.2rem !important;
+            font-size: 1.3rem !important;
         }
         button {
-            font-size: 1.2rem !important;
-            padding: 0.5rem 1.5rem !important;
+            font-size: 1.3rem !important;
+            padding: 0.6rem 2rem !important;
         }
     </style>
     """,
@@ -37,10 +44,18 @@ st.markdown(
 )
 
 # --------------------
-# Header
+# Header & instructions
 # --------------------
 st.title("Cryptext PDF")
-st.write("Type a word. Get a PDF.")
+
+st.markdown(
+    "<div class='instruction'><b>Use dots to separate words</b></div>",
+    unsafe_allow_html=True,
+)
+st.markdown(
+    "<div class='example'>Examples: <code>Red</code> · <code>Red.Ear</code> · <code>My.Secret.Word</code></div>",
+    unsafe_allow_html=True,
+)
 
 # --------------------
 # File mappings
@@ -74,65 +89,54 @@ TOKEN_MAP = {
 # --------------------
 user_text = st.text_input(
     label="",
-    placeholder="e.g. Red.Ear",
-    value="Red.Ear",
+    placeholder="Enter text like: Red.Ear",
 )
 
 # --------------------
-# One-step action
+# ONE BUTTON: Generate + Download
 # --------------------
-if st.button("Create PDF"):
+if user_text.strip():
     text = user_text.strip().lower()
 
-    if not text:
-        st.warning("Enter something first.")
-    else:
-        tokens = []
+    tokens = []
+    for i, ch in enumerate(text):
+        if ch == ".":
+            tokens.append("dot")
+            continue
 
-        for i, ch in enumerate(text):
-            if ch == ".":
-                tokens.append("dot")
-                continue
+        is_word_start = i == 0 or text[i - 1] == "."
 
-            is_word_start = i == 0 or text[i - 1] == "."
+        if ch == "e" and is_word_start:
+            tokens.append("e3")
+        elif ch == "r" and is_word_start:
+            tokens.append("r21")
+        else:
+            tokens.append(ch)
 
-            if ch == "e" and is_word_start:
-                tokens.append("e3")
-            elif ch == "r" and is_word_start:
-                tokens.append("r21")
-            else:
-                tokens.append(ch)
+    writer = PdfWriter()
 
-        writer = PdfWriter()
+    for token in reversed(tokens):
+        key = TOKEN_MAP.get(token, token)
+        file_id = FILE_IDS.get(key)
+        if not file_id:
+            continue
 
-        for token in reversed(tokens):
-            key = TOKEN_MAP.get(token, token)
-            file_id = FILE_IDS.get(key)
+        data = requests.get(
+            f"https://drive.google.com/uc?export=download&id={file_id}"
+        ).content
 
-            if not file_id:
-                continue
+        reader = PdfReader(io.BytesIO(data))
+        writer.add_page(reader.pages[0])
 
-            data = requests.get(
-                f"https://drive.google.com/uc?export=download&id={file_id}"
-            ).content
+    pdf_bytes = io.BytesIO()
+    writer.write(pdf_bytes)
+    pdf_bytes.seek(0)
 
-            reader = PdfReader(io.BytesIO(data))
-            writer.add_page(reader.pages[0])
+    filename = f"cryptext_{text.replace('.', '_')}.pdf"
 
-        pdf_bytes = io.BytesIO()
-        writer.write(pdf_bytes)
-        pdf_bytes.seek(0)
-
-        # Human-readable filename
-        safe_name = (
-            text.replace(".", "_")
-            .replace(" ", "_")
-        )
-        filename = f"cryptext_{safe_name}.pdf"
-
-        st.download_button(
-            label="Download PDF",
-            data=pdf_bytes.getvalue(),
-            file_name=filename,
-            mime="application/pdf",
-        )
+    st.download_button(
+        "Download PDF",
+        pdf_bytes.getvalue(),
+        file_name=filename,
+        mime="application/pdf",
+    )
