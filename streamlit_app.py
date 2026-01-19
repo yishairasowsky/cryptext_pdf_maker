@@ -3,11 +3,48 @@ import requests
 import io
 from pypdf import PdfReader, PdfWriter
 
-st.set_page_config(page_title="Cryptext PDF Builder", layout="centered")
+# --------------------
+# Page config
+# --------------------
+st.set_page_config(
+    page_title="Cryptext PDF Builder",
+    layout="centered",
+)
 
-st.title("Cryptext PDF Builder")
-st.write("Enter word(s) and receive a generated Cryptext PDF.")
+# --------------------
+# Simple UI styling
+# --------------------
+st.markdown(
+    """
+    <style>
+        .main h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+        .main p {
+            font-size: 1.2rem;
+        }
+        input {
+            font-size: 1.2rem !important;
+        }
+        button {
+            font-size: 1.2rem !important;
+            padding: 0.5rem 1.5rem !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
+# --------------------
+# Header
+# --------------------
+st.title("Cryptext PDF")
+st.write("Type a word. Get a PDF.")
+
+# --------------------
+# File mappings
+# --------------------
 FILE_IDS = {
     "m": "1UbRh_26i0BsjxOhIDg0wMbru_QL6yVL5",
     "y": "12mUIM66tN5U4ymH8-yK-OS-CbA18fCoi",
@@ -26,48 +63,76 @@ FILE_IDS = {
     "o": "1b0w2Yw6rZsoDvPbVv92kiUIVdPDnKYTh",
 }
 
-TOKEN_MAP = {"e": "e2", "l": "l7", "r": "r1"}
+TOKEN_MAP = {
+    "e": "e2",
+    "l": "l7",
+    "r": "r1",
+}
 
-force_word = st.text_input("Enter your word(s)", value="Red.Ear")
+# --------------------
+# Input
+# --------------------
+user_text = st.text_input(
+    label="",
+    placeholder="e.g. Red.Ear",
+    value="Red.Ear",
+)
 
-if st.button("Generate PDF"):
-    text = force_word.lower()
-    tokens = []
+# --------------------
+# One-step action
+# --------------------
+if st.button("Create PDF"):
+    text = user_text.strip().lower()
 
-    for i, ch in enumerate(text):
-        if ch == ".":
-            tokens.append("dot")
-            continue
+    if not text:
+        st.warning("Enter something first.")
+    else:
+        tokens = []
 
-        is_word_start = i == 0 or text[i - 1] == "."
+        for i, ch in enumerate(text):
+            if ch == ".":
+                tokens.append("dot")
+                continue
 
-        if ch == "e" and is_word_start:
-            tokens.append("e3")
-        elif ch == "r" and is_word_start:
-            tokens.append("r21")
-        else:
-            tokens.append(ch)
+            is_word_start = i == 0 or text[i - 1] == "."
 
-    writer = PdfWriter()
+            if ch == "e" and is_word_start:
+                tokens.append("e3")
+            elif ch == "r" and is_word_start:
+                tokens.append("r21")
+            else:
+                tokens.append(ch)
 
-    for token in reversed(tokens):
-        key = TOKEN_MAP.get(token, token)
-        file_id = FILE_IDS.get(key)
+        writer = PdfWriter()
 
-        data = requests.get(
-            f"https://drive.google.com/uc?export=download&id={file_id}"
-        ).content
+        for token in reversed(tokens):
+            key = TOKEN_MAP.get(token, token)
+            file_id = FILE_IDS.get(key)
 
-        reader = PdfReader(io.BytesIO(data))
-        writer.add_page(reader.pages[0])
+            if not file_id:
+                continue
 
-    pdf_bytes = io.BytesIO()
-    writer.write(pdf_bytes)
-    pdf_bytes.seek(0)
+            data = requests.get(
+                f"https://drive.google.com/uc?export=download&id={file_id}"
+            ).content
 
-    st.download_button(
-        "Download PDF",
-        pdf_bytes.getvalue(),
-        file_name=f"combined_{''.join(tokens)}.pdf",
-        mime="application/pdf",
-    )
+            reader = PdfReader(io.BytesIO(data))
+            writer.add_page(reader.pages[0])
+
+        pdf_bytes = io.BytesIO()
+        writer.write(pdf_bytes)
+        pdf_bytes.seek(0)
+
+        # Human-readable filename
+        safe_name = (
+            text.replace(".", "_")
+            .replace(" ", "_")
+        )
+        filename = f"cryptext_{safe_name}.pdf"
+
+        st.download_button(
+            label="Download PDF",
+            data=pdf_bytes.getvalue(),
+            file_name=filename,
+            mime="application/pdf",
+        )
