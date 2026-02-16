@@ -135,7 +135,7 @@ def fetch_pdf_first_page_bytes(file_id: str) -> bytes:
 @st.cache_data(show_spinner=True)
 def build_pdf_bytes(tokens: list[str]) -> bytes:
     writer = PdfWriter()
-    for token in reversed(tokens):
+    for token in tokens:
         key = TOKEN_MAP.get(token, token)
         file_id = FILE_IDS[key]  # safe: only call when validated
         data = fetch_pdf_first_page_bytes(file_id)
