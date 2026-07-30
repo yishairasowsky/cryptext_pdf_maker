@@ -10,6 +10,7 @@ st.set_page_config(page_title="Cryptext PDF", layout="centered")
 # Assets
 # --------------------
 FILE_IDS = {
+    "ampersand": "1mhz2-R-DcJxNd2TleUEkiTWBvaYdBzGv",
     "m": "1UbRh_26i0BsjxOhIDg0wMbru_QL6yVL5",
     "y": "12mUIM66tN5U4ymH8-yK-OS-CbA18fCoi",
     "dot": "1-xQiqHwACTsAytEfKPxw_WsuFu2iPye-",
