@@ -184,6 +184,11 @@ if not disabled:
     # Cached, so it won't refetch endlessly once built.
     data_bytes = build_pdf_bytes(tokens)
 
+if st.button("Clear cache (reload files from Drive)"):
+    fetch_pdf_first_page_bytes.clear()
+    build_pdf_bytes.clear()
+    st.success("Cache cleared — regenerate to fetch fresh files.")
+
 st.download_button(
     label="Generate & Download PDF",
     data=data_bytes,
