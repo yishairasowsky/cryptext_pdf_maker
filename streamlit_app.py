@@ -81,8 +81,8 @@ def normalize_input(s: str) -> str:
     s = s.strip().lower()
     # spaces become dots (friendlier)
     s = re.sub(r"\s+", ".", s)
-    # keep only letters and dots
-    s = re.sub(r"[^a-z.]", "", s)
+    # keep only letters, dots, and ampersand
+    s = re.sub(r"[^a-z.&]", "", s)
     # collapse multiple dots
     s = re.sub(r"\.+", ".", s)
     # trim leading/trailing dots
@@ -94,6 +94,10 @@ def tokenize(text: str) -> list[str]:
     for i, ch in enumerate(text):
         if ch == ".":
             tokens.append("dot")
+            continue
+
+        if ch == "&":
+            tokens.append("ampersand")
             continue
 
         is_word_start = i == 0 or text[i - 1] == "."
